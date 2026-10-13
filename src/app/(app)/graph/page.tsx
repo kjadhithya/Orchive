@@ -1,6 +1,5 @@
 'use client';
 import React, { Suspense, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { GraphView } from '@/components/GraphView';
@@ -21,6 +20,7 @@ function GraphInner() {
   const [colorRating, setColorRating] = useState(false);
   const [sizeBy, setSizeBy] = useState<'links' | 'notes'>('links');
   const [q, setQ] = useState('');
+  const [panel, setPanel] = useState(false);
   const full = useMemo(() => buildGraph(books, tags, bookTags, notes, opts), [books, tags, bookTags, notes, opts]);
   const g = useMemo(() => (local ? neighborhood(full, local, depth) : full), [full, local, depth]);
   const sel = g.nodes.find((n) => n.id === selected) || full.nodes.find((n) => n.id === selected);
@@ -33,13 +33,30 @@ function GraphInner() {
     <div style={{ display: 'flex', height: '100%' }}>
       <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
         <div className="vh"><b>Graph</b><span>· {g.nodes.filter((n) => n.kind === 'book').length} books · {g.nodes.filter((n) => n.kind === 'tag').length} tags · {g.nodes.filter((n) => n.kind === 'note').length} notes</span>
-          {local && <><span className="grow" /><span className="chip on">Local view<button className="x" aria-label="Show whole library" onClick={() => setLocal(null)}><Icon name="close" size={12} /></button></span></>}
+          <span className="grow" />
+          {local && <span className="chip on">Local view<button className="x" aria-label="Show whole library" onClick={() => setLocal(null)}><Icon name="close" size={12} /></button></span>}
+          <div style={{ position: 'relative' }}>
+            <label className="input" style={{ height: 30, fontSize: 12, width: 220 }}><Icon name="search" size={14} className="mut" /><input type="search" placeholder="Find a book, tag or note" aria-label="Find in graph" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+            {found.length > 0 && <div className="menu" style={{ top: '100%', left: 0, right: 0, marginTop: 4 }}>{found.map((n) => <button key={n.id} onClick={() => { setSelected(n.id); setLocal(n.id); setQ(''); }}><Icon name={n.kind === 'tag' ? 'tag' : n.kind === 'note' ? 'note' : 'book'} size={14} className="mut" />{n.label}</button>)}</div>}
+          </div>
+          <button className={`ib ${panel ? 'on' : ''}`} aria-label={panel ? 'Hide graph settings' : 'Graph settings'} aria-pressed={panel} onClick={() => setPanel(!panel)}><Icon name="settings" size={16} /></button>
         </div>
         <div style={{ flex: 1, minHeight: 500 }}>
           {g.nodes.length === 0 ? <div className="empty">Add books, tags and notes with [[links]] to grow your graph.</div> : (
             <GraphView nodes={g.nodes} edges={g.edges} height={Math.max(500, typeof window !== 'undefined' ? window.innerHeight - 140 : 700)} selected={selected} focus={local} onSelect={setSelected} onOpen={open} colorByRating={colorRating} sizeBy={sizeBy} />
           )}
         </div>
+        {sel && (
+          <section className="card col" aria-label="Selected" style={{ position: 'absolute', top: 52, right: 16, width: 260, padding: 12, gap: 8, borderRadius: 10, boxShadow: 'var(--shadow-pop)' }}>
+            <div className="row"><Icon name={sel.kind === 'tag' ? 'tag' : sel.kind === 'note' ? 'note' : sel.nofile ? 'book-nofile' : 'book'} size={15} className="ink" /><span style={{ fontWeight: 600, fontSize: 13 }} className="grow truncate">{sel.label}</span>{sel.book && <RatingMark rating={sel.book.rating} />}</div>
+            <span className="cap">{degree(sel.id)} connections{sel.book ? ` · ${STATUS_LABEL[sel.book.status]}` : ''}</span>
+            <div className="row" style={{ gap: 6 }}>
+              {(sel.book || sel.note || sel.kind === 'tag') && <button className="btn sec sm" onClick={() => open(sel)}>Open</button>}
+              <button className="btn ghost sm" onClick={() => setLocal(sel.id)}>Focus here</button>
+              <span className="grow" /><button className="ib" aria-label="Close" onClick={() => setSelected(null)}><Icon name="close" size={14} /></button>
+            </div>
+          </section>
+        )}
         <div className="card row wrap cap" style={{ position: 'absolute', left: 16, bottom: 16, padding: '8px 12px', gap: 14, borderRadius: 10 }}>
           <span className="row" style={{ gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--ink-muted)' }} />Book</span>
           <span className="row" style={{ gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: '50%', border: '1.5px dashed var(--border-control)' }} />No file</span>
@@ -48,11 +65,7 @@ function GraphInner() {
           <span>Double-click to open · drag to move · scroll to zoom</span>
         </div>
       </div>
-      <aside className="side-r" aria-label="Graph settings" style={{ display: 'flex' }}>
-        <div style={{ position: 'relative' }}>
-          <label className="input" style={{ height: 30, fontSize: 12 }}><Icon name="search" size={14} className="mut" /><input type="search" placeholder="Find a book, tag or note" aria-label="Find in graph" value={q} onChange={(e) => setQ(e.target.value)} /></label>
-          {found.length > 0 && <div className="menu" style={{ top: '100%', left: 0, right: 0, marginTop: 4 }}>{found.map((n) => <button key={n.id} onClick={() => { setSelected(n.id); setLocal(n.id); setQ(''); }}><Icon name={n.kind === 'tag' ? 'tag' : n.kind === 'note' ? 'note' : 'book'} size={14} className="mut" />{n.label}</button>)}</div>}
-        </div>
+      {panel && <aside className="side-r" aria-label="Graph settings" style={{ display: 'flex' }}>
         <section className="col" style={{ gap: 2 }}>
           <div className="gh" style={{ padding: '0 0 4px' }}>Show</div>
           {([['tags', 'Tags'], ['notes', 'Notes'], ['authors', 'Authors'], ['placeholders', 'Books without a file'], ['orphans', 'Unconnected books']] as const).map(([k, l]) => (
@@ -68,19 +81,8 @@ function GraphInner() {
           <div className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}><span>Colour by rating</span><Toggle on={colorRating} onChange={setColorRating} label="Colour by rating" /></div>
           {local && <div className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}><span>Depth</span><Seg label="Depth" value={String(depth) as '1' | '2' | '3'} onChange={(v) => setDepth(Number(v))} options={[{ v: '1', l: '1' }, { v: '2', l: '2' }, { v: '3', l: '3' }]} /></div>}
         </section>
-        {sel && (
-          <section className="card col" style={{ padding: 12, gap: 8, borderRadius: 10 }}>
-            <div className="row"><Icon name={sel.kind === 'tag' ? 'tag' : sel.kind === 'note' ? 'note' : sel.nofile ? 'book-nofile' : 'book'} size={15} className="ink" /><span style={{ fontWeight: 600, fontSize: 13 }} className="grow truncate">{sel.label}</span>{sel.book && <RatingMark rating={sel.book.rating} />}</div>
-            <span className="cap">{degree(sel.id)} connections{sel.book ? ` · ${STATUS_LABEL[sel.book.status]}` : ''}</span>
-            <div className="row" style={{ gap: 6 }}>
-              {(sel.book || sel.note || sel.kind === 'tag') && <button className="btn sec sm" onClick={() => open(sel)}>Open</button>}
-              <button className="btn ghost sm" onClick={() => setLocal(sel.id)}>Focus here</button>
-            </div>
-          </section>
-        )}
-        {!sel && <p className="cap" style={{ margin: 0 }}>Links come from tags and from [[book]] links in your notes. Select a node to focus on it.</p>}
-        <Link href="/notes" className="cap">Write a note</Link>
-      </aside>
+        <p className="cap" style={{ margin: 0 }}>Links come from tags and from [[book]] links in your notes. Select a node to focus on it.</p>
+      </aside>}
     </div>
   );
 }

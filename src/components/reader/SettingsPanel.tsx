@@ -38,12 +38,12 @@ export function ReaderSettingsPanel({ settings, reading, scope, setScope, onChan
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
             {themes.map((t) => (
-              <button key={t.id} onClick={() => onChange({ theme: t.id })} aria-pressed={reading.theme === t.id} style={{ border: 0, background: 'none', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontSize: 11, color: reading.theme === t.id ? 'var(--ink)' : 'var(--ink-secondary)', fontWeight: reading.theme === t.id ? 600 : 400 }}>
+              <button key={t.id} onClick={() => onChange({ theme: t.id })} aria-pressed={reading.theme === t.id} style={{ border: 0, background: 'none', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontSize: 12, color: reading.theme === t.id ? 'var(--ink)' : 'var(--ink-secondary)', fontWeight: reading.theme === t.id ? 600 : 400 }}>
                 <span style={{ width: 42, height: 42, borderRadius: '50%', background: t.bg, color: t.ink, display: 'grid', placeItems: 'center', fontFamily: 'var(--font-read)', fontSize: 15, boxShadow: reading.theme === t.id ? '0 0 0 2px var(--surface), 0 0 0 4px var(--ink)' : 'inset 0 0 0 1px rgba(127,127,127,.35)' }}>Aa</span>
                 {t.name}
               </button>
             ))}
-            <button onClick={() => setDraft({ id: `custom-${Date.now()}`, name: 'My theme', bg: '#F4EFEA', ink: '#2B2522', link: '#763D82', highlight: '#E9D8EE', texture: 'none' })} style={{ border: 0, background: 'none', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--ink-secondary)' }}>
+            <button onClick={() => setDraft({ id: `custom-${Date.now()}`, name: 'My theme', bg: '#F4EFEA', ink: '#2B2522', link: '#763D82', highlight: '#E9D8EE', texture: 'none' })} style={{ border: 0, background: 'none', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--ink-secondary)' }}>
               <span style={{ width: 42, height: 42, borderRadius: '50%', border: '1.5px dashed var(--border-control)', display: 'grid', placeItems: 'center' }}><Icon name="plus" size={16} /></span>New
             </button>
           </div>

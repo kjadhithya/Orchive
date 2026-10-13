@@ -38,19 +38,18 @@ export function CollectionPicker({ book, onClose }: { book: Book; onClose: () =>
   );
 }
 
-export function BookMenu({ book }: { book: Book }) {
-  const { setReadNext, updateBook, trashBook, removeFile } = useLibrary();
+export function BookMenu({ book, onPage = false }: { book: Book; onPage?: boolean }) {
+  const { trashBook, removeFile } = useLibrary();
   const [pick, setPick] = useState(false);
   return (
     <>
       <MenuButton label={`More for ${book.title}`}>
         {(close) => (
           <>
-            <Link href={`/book/${book.id}`} onClick={close}><Icon name="book" size={15} />Open book page</Link>
-            {book.file_path ? <Link href={`/read/${book.id}`} onClick={close}><Icon name="library" size={15} />Read</Link>
-              : <button onClick={() => { close(); openImport('files', book.id); }}><Icon name="upload" size={15} />Import file</button>}
-            <button onClick={() => { close(); setReadNext(book.id, book.read_next_pos == null); }}><Icon name="bookmark" size={15} />{book.read_next_pos == null ? 'Add to Read Next' : 'Remove from Read Next'}</button>
-            <button onClick={() => { close(); updateBook(book.id, { favorite: !book.favorite }); }}><Icon name="heart" size={15} />{book.favorite ? 'Remove from favorites' : 'Add to favorites'}</button>
+            {!onPage && <Link href={`/book/${book.id}`} onClick={close}><Icon name="book" size={15} />Open book page</Link>}
+            {!onPage && <Link href={`/book/${book.id}?edit=1`} onClick={close}><Icon name="edit" size={15} />Edit details</Link>}
+            {!onPage && (book.file_path ? <Link href={`/read/${book.id}`} onClick={close}><Icon name="library" size={15} />Read</Link>
+              : <button onClick={() => { close(); openImport('files', book.id); }}><Icon name="upload" size={15} />Add file</button>)}
             <button onClick={() => { close(); setPick(true); }}><Icon name="folder" size={15} />Collections…</button>
             {book.file_path && <button onClick={() => { close(); downloadBook(book); }}><Icon name="download" size={15} />Download file</button>}
             {book.file_path && <button onClick={() => { close(); if (confirm('Remove the file and keep this book as a placeholder? Notes, rating and tags stay.')) removeFile(book.id); }}><Icon name="book-nofile" size={15} />Remove file, keep book</button>}

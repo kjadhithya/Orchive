@@ -308,7 +308,7 @@ export const PdfReader = forwardRef<PdfHandle, ReaderProps & { data: ArrayBuffer
                         backgroundImage: a.style === 'strike' ? `linear-gradient(transparent 45%, ${HL_COLORS[a.color || 'orchid']} 45%, ${HL_COLORS[a.color || 'orchid']} 55%, transparent 55%)` : undefined }} />
                   )))}
                 </div>
-                <span style={{ position: 'absolute', right: 6, bottom: 4, fontSize: 10, color: '#999', pointerEvents: 'none' }}>{i}</span>
+                <span style={{ position: 'absolute', right: 6, bottom: 4, fontSize: 11, color: '#666', pointerEvents: 'none' }}>{i}</span>
               </div>
             );
           })}

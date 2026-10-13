@@ -1,13 +1,13 @@
 'use client';
 import React, { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useLibrary } from '@/lib/store';
 import { Empty } from '@/components/ui';
+import { HighlightItem } from '@/components/HighlightItem';
 import { Icon } from '@/components/Icon';
 import { download, escapeHtml, fmtDate, norm } from '@/lib/util';
 
 export default function HighlightsPage() {
-  const { annotations, live, deleteAnnotation } = useLibrary();
+  const { annotations, live } = useLibrary();
   const [q, setQ] = useState('');
   const [book, setBook] = useState('all');
   const [color, setColor] = useState('all');
@@ -43,15 +43,7 @@ export default function HighlightsPage() {
         <div className="row" style={{ gap: 4 }}>{['all', 'orchid', 'blush', 'apricot', 'sky'].map((c) => <button key={c} className={`chip ${color === c ? 'on' : ''}`} onClick={() => setColor(c)} aria-label={`Colour ${c}`}>{c === 'all' ? 'All' : <span style={{ width: 12, height: 12, borderRadius: 3, background: `var(--hl-${c})`, display: 'inline-block' }} />}</button>)}</div>
       </div>
       {list.length === 0 ? <Empty icon="highlight" title="No highlights yet">Select text while reading to highlight it.</Empty> : list.map((a) => (
-        <div key={a.id} className="col" style={{ gap: 4 }}>
-          <Link href={`/read/${a.book_id}?at=${encodeURIComponent(a.location || '')}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-            <blockquote className="read-font" style={{ margin: 0, padding: '10px 14px', borderRadius: 8, background: `var(--hl-${a.color || 'orchid'})`, fontSize: 16, lineHeight: '26px' }}>{a.quote}{a.note && <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: 13, marginTop: 6 }}>{a.note}</span>}</blockquote>
-          </Link>
-          <div className="row cap"><span className="grow">{title(a.book_id)}{a.chapter ? ` · ${a.chapter}` : ''} · {fmtDate(a.created_at)}</span>
-            <button className="btn ghost sm" onClick={() => { const t = `“${a.quote}” — ${title(a.book_id)}`; if (navigator.share) navigator.share({ text: t }).catch(() => {}); else { navigator.clipboard.writeText(t); } }}><Icon name="share" size={13} />Share</button>
-            <button className="btn ghost sm" onClick={() => deleteAnnotation(a.id)}>Delete</button>
-          </div>
-        </div>
+        <HighlightItem key={a.id} h={a} bookId={a.book_id} meta={<>{title(a.book_id)}{a.chapter ? ` · ${a.chapter}` : ''} · {fmtDate(a.created_at)}</>} />
       ))}
     </div>
   );

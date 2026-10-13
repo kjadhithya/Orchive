@@ -41,7 +41,7 @@ export function Heatmap({ sessions, weeks = 26 }: { sessions: Session[]; weeks?:
   const monthLabels: { col: number; label: string }[] = [];
   cells.forEach((c, i) => { if (c.d.getDate() <= 7 && c.d.getDay() === 0) monthLabels.push({ col: Math.floor(i / 7), label: MONTHS[c.d.getMonth()] }); });
   return (
-    <div className="col" style={{ gap: 6, overflowX: 'auto' }}>
+    <div className="col" style={{ gap: 6, overflowX: 'auto' }} tabIndex={0} aria-label="Reading days, scroll sideways for earlier weeks">
       <div style={{ position: 'relative', height: 14, minWidth: Math.ceil(cells.length / 7) * 18 }}>
         {monthLabels.map((m) => <span key={m.col} className="cap" style={{ position: 'absolute', left: m.col * 18 }}>{m.label}</span>)}
       </div>

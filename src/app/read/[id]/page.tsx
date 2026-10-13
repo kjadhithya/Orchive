@@ -7,7 +7,7 @@ import { useAuthGate, Loading } from '@/components/Shell';
 import { Icon, Mark } from '@/components/Icon';
 import { getFile, signedUrl } from '@/lib/files';
 import { prepareForReader, Prepared } from '@/lib/convert';
-import { applyAppearance, DEFAULT_READING, findReadingTheme, mergeSettings } from '@/lib/settings';
+import { applyAppearance, DEFAULT_READING, findReadingTheme, mergeSettings, setReaderTheme } from '@/lib/settings';
 import { effectiveTheme } from '@/lib/readerStyles';
 import { deviceLabel } from '@/lib/supabase';
 import { FoliateReader, HL_COLORS } from '@/components/reader/FoliateReader';
@@ -56,7 +56,17 @@ function ReaderInner() {
   const [searchProg, setSearchProg] = useState<number | null>(null);
   const [completing, setCompleting] = useState(false);
   const [pdfView, setPdfViewState] = useState<PdfView>({ fit: typeof window !== 'undefined' && window.innerWidth > 900 ? 'page' : 'width', zoom: 1, rotate: 0, crop: 0, spread: false, invert: false, thumbs: false });
-  const [tts, setTts] = useState<{ playing: boolean; rate: number; pitch: number; voice: string; sleep: number } >({ playing: false, rate: 1, pitch: 1, voice: '', sleep: 0 });
+  const [tts, setTtsState] = useState<{ playing: boolean; rate: number; pitch: number; voice: string; sleep: number }>(() => {
+    const d = { playing: false, rate: 1, pitch: 1, voice: '', sleep: 0 };
+    try { return { ...d, ...JSON.parse(localStorage.getItem('orchive-tts') || '{}'), playing: false }; } catch { return d; }
+  });
+  const ttsLive = useRef(tts);
+  const setTts = (u: typeof tts | ((t: typeof tts) => typeof tts)) => setTtsState((prev) => {
+    const next = typeof u === 'function' ? u(prev) : u;
+    ttsLive.current = next;
+    try { const { playing, ...keep } = next; localStorage.setItem('orchive-tts', JSON.stringify(keep)); } catch {}
+    return next;
+  });
   const [ttsOpen, setTtsOpen] = useState(false);
   const [autoScroll, setAutoScroll] = useState(false);
   const [fontCss, setFontCss] = useState('');
@@ -72,7 +82,9 @@ function ReaderInner() {
   const theme: ReadingTheme = useMemo(() => findReadingTheme(settings, effectiveTheme(settings, reading, new Date(clock))), [settings, reading, clock]);
 
   // app chrome follows the reading theme when asked
-  useEffect(() => { applyAppearance(settings, theme); return () => applyAppearance(settings); }, [settings, theme]);
+  useEffect(() => { setReaderTheme(theme); applyAppearance(settings); }, [settings, theme]);
+  useEffect(() => () => { setReaderTheme(null); applyAppearance(settingsRef.current); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const settingsRef = useRef(settings); settingsRef.current = settings;
 
   const changeReading = (patch: Partial<ReadingSettings>) => {
     if (!book) return;
@@ -208,14 +220,37 @@ function ReaderInner() {
 
   // text to speech
   const ttsRun = useRef(0);
-  const voices = typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis.getVoices() : [];
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+    const load = () => setVoices(window.speechSynthesis.getVoices().slice().sort((a, b) => a.lang.localeCompare(b.lang) || a.name.localeCompare(b.name)));
+    load();
+    window.speechSynthesis.addEventListener('voiceschanged', load);
+    const t = setTimeout(load, 800);
+    return () => { window.speechSynthesis.removeEventListener('voiceschanged', load); clearTimeout(t); };
+  }, []);
+  const voiceGroups = useMemo(() => {
+    const names = (l: string) => { try { return new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' }).of(l) || l; } catch { return l; } };
+    const m = new Map<string, SpeechSynthesisVoice[]>();
+    voices.forEach((v) => { const k = names(v.lang); m.set(k, [...(m.get(k) || []), v]); });
+    const mine = (navigator.language || 'en').split('-')[0];
+    return Array.from(m.entries()).sort(([a, va], [b, vb]) => Number(vb[0].lang.startsWith(mine)) - Number(va[0].lang.startsWith(mine)) || a.localeCompare(b));
+  }, [voices]);
+  const previewVoice = () => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('This is how this voice sounds while reading your book.');
+    const v = voices.find((x) => x.name === ttsLive.current.voice); if (v) { u.voice = v; u.lang = v.lang; }
+    u.rate = ttsLive.current.rate; u.pitch = ttsLive.current.pitch;
+    window.speechSynthesis.speak(u);
+  };
   const stopTts = () => { ttsRun.current++; window.speechSynthesis?.cancel(); setTts((t) => ({ ...t, playing: false })); };
   const startTts = async (fromText?: string) => {
     if (!('speechSynthesis' in window)) { toast('Read aloud isn’t supported in this browser.'); return; }
     const run = ++ttsRun.current;
     window.speechSynthesis.cancel();
     setTts((t) => ({ ...t, playing: true }));
-    const until = tts.sleep ? Date.now() + tts.sleep * 60_000 : 0;
+    const until = ttsLive.current.sleep ? Date.now() + ttsLive.current.sleep * 60_000 : 0;
     let first = true;
     while (ttsRun.current === run) {
       let blocks = await reader.current!.speakBlocks();
@@ -227,9 +262,10 @@ function ReaderInner() {
         b.highlight();
         await new Promise<void>((res) => {
           const u = new SpeechSynthesisUtterance(b.text);
-          u.rate = tts.rate; u.pitch = tts.pitch;
-          const v = window.speechSynthesis.getVoices().find((x) => x.name === tts.voice);
-          if (v) u.voice = v;
+          const cur = ttsLive.current;
+          u.rate = cur.rate; u.pitch = cur.pitch;
+          const v = window.speechSynthesis.getVoices().find((x) => x.name === cur.voice);
+          if (v) { u.voice = v; u.lang = v.lang; }
           u.onend = () => res(); u.onerror = () => res();
           window.speechSynthesis.speak(u);
         });
@@ -429,15 +465,22 @@ function ReaderInner() {
             <div className="row" style={{ gap: 8 }}>
               {tts.playing ? <button className="btn pri" onClick={stopTts}><Icon name="pause" size={15} style={{ color: 'var(--on-primary)' }} />Stop</button> : <button className="btn pri" onClick={() => startTts()}><Icon name="play" size={15} style={{ color: 'var(--on-primary)' }} />Play from here</button>}
             </div>
-            <label className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>Voice
-              <select className="chip out" style={{ maxWidth: 170 }} value={tts.voice} onChange={(e) => setTts({ ...tts, voice: e.target.value })}><option value="">Default</option>{voices.map((v) => <option key={v.name} value={v.name}>{v.name}</option>)}</select>
-            </label>
-            <label className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>Speed <input type="range" min={0.5} max={2} step={0.1} value={tts.rate} onChange={(e) => setTts({ ...tts, rate: Number(e.target.value) })} /><span className="cap">{tts.rate.toFixed(1)}×</span></label>
-            <label className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>Pitch <input type="range" min={0.5} max={1.5} step={0.1} value={tts.pitch} onChange={(e) => setTts({ ...tts, pitch: Number(e.target.value) })} /><span className="cap">{tts.pitch.toFixed(1)}</span></label>
+            <div className="col" style={{ gap: 6 }}>
+              <label htmlFor="tts-voice" style={{ fontSize: 13 }}>Voice <span className="cap">· {voices.length ? `${voices.length} available on this device` : 'loading…'}</span></label>
+              <div className="row" style={{ gap: 6 }}>
+                <select id="tts-voice" className="text-input" style={{ flex: 1, minWidth: 0, padding: '6px 8px', fontSize: 13 }} value={tts.voice} onChange={(e) => setTts((t) => ({ ...t, voice: e.target.value }))}>
+                  <option value="">System default</option>
+                  {voiceGroups.map(([lang, list]) => <optgroup key={lang} label={lang}>{list.map((v) => <option key={v.name} value={v.name}>{v.name.replace(/^(Microsoft|Google)\s+/, '').replace(/\s+Online \(Natural\)/, ' (Natural)')}{v.localService ? '' : ' · online'}</option>)}</optgroup>)}
+                </select>
+                <button className="btn sec sm" onClick={previewVoice}><Icon name="volume" size={14} />Try</button>
+              </div>
+            </div>
+            <label className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>Speed <input type="range" min={0.5} max={2} step={0.1} value={tts.rate} onChange={(e) => setTts((t) => ({ ...t, rate: Number(e.target.value) }))} /><span className="cap">{tts.rate.toFixed(1)}×</span></label>
+            <label className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>Pitch <input type="range" min={0.5} max={1.5} step={0.1} value={tts.pitch} onChange={(e) => setTts((t) => ({ ...t, pitch: Number(e.target.value) }))} /><span className="cap">{tts.pitch.toFixed(1)}</span></label>
             <label className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>Sleep timer
-              <select className="chip out" value={tts.sleep} onChange={(e) => setTts({ ...tts, sleep: Number(e.target.value) })}><option value={0}>Off</option><option value={10}>10 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={60}>1 hour</option></select>
+              <select className="chip out" value={tts.sleep} onChange={(e) => setTts((t) => ({ ...t, sleep: Number(e.target.value) }))}><option value={0}>Off</option><option value={10}>10 min</option><option value={20}>20 min</option><option value={30}>30 min</option><option value={60}>1 hour</option></select>
             </label>
-            <p className="cap" style={{ margin: 0 }}>Changes apply when you next press Play. The sentence being read is highlighted and pages turn automatically.</p>
+            <p className="cap" style={{ margin: 0 }}>Changes apply from the next sentence. The sentence being read is highlighted and pages turn automatically. More voices: add languages in your system’s speech settings.</p>
           </section>
         )}
 

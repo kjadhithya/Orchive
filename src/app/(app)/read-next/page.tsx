@@ -19,7 +19,7 @@ export default function ReadNextPage() {
   return (
     <div className="page" style={{ maxWidth: 760 }}>
       <div><h1 className="page-title">Read Next</h1><div className="cap" style={{ fontSize: 13, marginTop: 2 }}>Your queue. These books always stay at the top of the library. Drag or use the arrows to reorder.</div></div>
-      {readNext.length === 0 ? <Empty icon="bookmark" title="Nothing queued">Use “Add to Read Next” on any book page or library row.</Empty> : (
+      {readNext.length === 0 ? <Empty icon="readnext" title="Nothing queued">Use “Add to Read Next” on any book page or library row.</Empty> : (
         <ol className="col" style={{ listStyle: 'none', margin: 0, padding: 0, gap: 8 }}>
           {readNext.map((b, i) => (
             <li key={b.id} draggable onDragStart={() => setDrag(b.id)} onDragOver={(e) => e.preventDefault()}

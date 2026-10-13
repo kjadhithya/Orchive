@@ -164,3 +164,62 @@ export function useDebounced<T>(value: T, ms: number): T {
   useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
   return v;
 }
+
+/** Shows the aria-label of icon-only buttons and links as a hover label, everywhere in the app. */
+export function HoverLabels() {
+  const [tip, setTip] = useState<{ text: string; x: number; y: number; below: boolean } | null>(null);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const find = (t: EventTarget | null) => {
+      const el = (t as Element | null)?.closest?.('button[aria-label], a[aria-label], [role="button"][aria-label], [role="tab"] [aria-label]') as HTMLElement | null;
+      if (!el || el.classList.contains('rb')) return null;
+      if ((el.textContent || '').trim().length > 0) return null; // has a visible label already
+      return el;
+    };
+    const over = (e: MouseEvent) => {
+      const el = find(e.target);
+      if (timer) clearTimeout(timer);
+      if (!el) { setTip(null); return; }
+      timer = setTimeout(() => {
+        const r = el.getBoundingClientRect();
+        const below = r.top < 44;
+        setTip({ text: el.getAttribute('aria-label') || '', x: Math.min(window.innerWidth - 8, Math.max(8, r.left + r.width / 2)), y: below ? r.bottom + 6 : r.top - 6, below });
+      }, 350);
+    };
+    const hide = () => { if (timer) clearTimeout(timer); setTip(null); };
+    document.addEventListener('mouseover', over);
+    document.addEventListener('mousedown', hide);
+    document.addEventListener('scroll', hide, true);
+    return () => { document.removeEventListener('mouseover', over); document.removeEventListener('mousedown', hide); document.removeEventListener('scroll', hide, true); };
+  }, []);
+  if (!tip) return null;
+  return <div className="tt" role="tooltip" style={{ left: tip.x, top: tip.y, transform: `translate(-50%, ${tip.below ? '0' : '-100%'})` }}>{tip.text}</div>;
+}
+
+export function FavButton({ book, size = 16, className = 'fav' }: { book: Book; size?: number; className?: string }) {
+  const { updateBook } = useStore();
+  const on = !!book.favorite;
+  return (
+    <button type="button" className={`${className} ${on ? 'on' : ''}`} aria-pressed={on} aria-label={on ? 'Remove from favourites' : 'Add to favourites'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateBook(book.id, { favorite: !on }); }}>
+      <Icon name="heart" size={size} filled={on} />
+    </button>
+  );
+}
+
+export function ReadNextButton({ book, size = 16, className = 'rn' }: { book: Book; size?: number; className?: string }) {
+  const { setReadNext } = useStore();
+  const on = book.read_next_pos != null;
+  return (
+    <button type="button" className={`${className} ${on ? 'on' : ''}`} aria-pressed={on} aria-label={on ? 'Remove from Read Next' : 'Add to Read Next'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReadNext(book.id, !on); }}>
+      <Icon name="readnext" size={size} />
+    </button>
+  );
+}
+
+/** Remembered open/closed state for a page's right-hand panel. Closed by default. */
+export function usePanel(key: string): [boolean, () => void] {
+  const [open, setOpen] = useState(false);
+  useEffect(() => { try { setOpen(localStorage.getItem(`orchive-panel-${key}`) === '1'); } catch {} }, [key]);
+  const toggle = () => setOpen((v) => { try { localStorage.setItem(`orchive-panel-${key}`, v ? '0' : '1'); } catch {} return !v; });
+  return [open, toggle];
+}

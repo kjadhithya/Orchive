@@ -155,4 +155,5 @@ export interface AppSettings {
   autoUploadDuplicates: 'skip' | 'ask';
   librarySort: string;
   libraryView: 'list' | 'covers';
+  v?: number;
 }

@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { StoreProvider } from '@/lib/store';
-import { Toasts } from '@/components/ui';
+import { HoverLabels, Toasts } from '@/components/ui';
 
 export const metadata: Metadata = {
   title: 'Orchive',
@@ -30,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <StoreProvider>
           {children}
           <Toasts />
+          <HoverLabels />
         </StoreProvider>
       </body>
     </html>

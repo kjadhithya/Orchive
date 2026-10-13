@@ -15,7 +15,7 @@ export const openImport = (mode: 'files' | 'placeholder' = 'files', attachTo?: s
 const NAV = [
   { href: '/library', icon: 'library', label: 'Library' },
   { href: '/search', icon: 'search', label: 'Search' },
-  { href: '/read-next', icon: 'bookmark', label: 'Read Next' },
+  { href: '/read-next', icon: 'readnext', label: 'Read Next' },
   { href: '/notes', icon: 'note', label: 'Notes' },
   { href: '/timeline', icon: 'timeline', label: 'Timeline' },
   { href: '/graph', icon: 'graph', label: 'Graph' },
@@ -186,7 +186,7 @@ function NotesSidebar({ path, onClose }: { path: string; onClose: () => void }) 
 
 const SETTINGS_NAV = [
   ['account', 'Account', 'user'], ['appearance', 'Appearance', 'theme'], ['reading', 'Reading', 'type'], ['library', 'Library and import', 'library'],
-  ['sync', 'Sync and storage', 'cloud'], ['goals', 'Goals', 'goal'], ['privacy', 'Privacy and backup', 'key'],
+  ['sync', 'Sync and storage', 'cloud'], ['privacy', 'Privacy and backup', 'key'],
 ];
 
 function SettingsSidebar({ path }: { path: string }) {
@@ -272,22 +272,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </>
       )}
       <main className="main">
-        <div className="tabs" role="tablist" aria-label="Open pages">
+        <nav className="tabs" aria-label="Open pages">
           {!sideOpen && <button className="ib" aria-label="Show sidebar" onClick={toggleSide} style={{ marginBottom: 4 }}><Icon name="sidebar" size={16} /></button>}
           {tabs.map((t) => {
             const info = titleFor(t);
             const on = t === path;
             return (
-              <div key={t} className={`tab ${on ? 'on' : ''}`} role="tab" aria-selected={on}>
-                <Link href={t} className="row truncate" style={{ gap: 8, color: 'inherit', textDecoration: 'none' }}><Icon name={info.icon} size={14} className={on ? 'ink' : 'mut'} /><span className="truncate">{info.title}</span></Link>
+              <div key={t} className={`tab ${on ? 'on' : ''}`}>
+                <Link href={t} className="row truncate" aria-current={on ? 'page' : undefined} style={{ gap: 8, color: 'inherit', textDecoration: 'none' }}><Icon name={info.icon} size={14} className={on ? 'ink' : 'mut'} /><span className="truncate">{info.title}</span></Link>
                 <button className="x" aria-label={`Close ${info.title}`} onClick={() => closeTab(t)}><Icon name="close" size={13} /></button>
               </div>
             );
           })}
-        </div>
+        </nav>
         <div className="main-scroll">{children}</div>
         <div className="status hide-sm">
-          <span>{books.filter((b) => !b.deleted_at).length} books</span>
           <span>{!online ? 'Offline: changes will sync when you reconnect' : syncing > 0 ? 'Saving…' : 'Synced'}</span>
         </div>
         <nav className="mobile-nav" aria-label="Main">

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLibrary } from '@/lib/store';
 import { Icon, RatingMark } from '@/components/Icon';
-import { Empty, Seg } from '@/components/ui';
+import { Empty, Seg, usePanel } from '@/components/ui';
 import { Heatmap, dailySeconds, streaks } from '@/components/Heatmap';
 import { daysBetween, duration, MONTHS, MONTHS_LONG, pct } from '@/lib/util';
 import type { Book } from '@/lib/types';
@@ -24,6 +24,7 @@ export default function TimelinePage() {
   const [fileF, setFileF] = useState<'all' | 'without'>('all');
   const [minRating, setMinRating] = useState(0);
   useEffect(() => { loadSessions(); }, [loadSessions]);
+  const [side, toggleSide] = usePanel('timeline');
 
   const filtered = useMemo(() => live.filter((b) => (status === 'all' || b.status === status) && (!tag || tagsOf(b.id).some((t) => t.name === tag)) && (fileF === 'all' || !b.file_path) && (!minRating || (b.rating ?? 0) >= minRating)), [live, status, tag, fileF, minRating, tagsOf]);
   const now = Date.now();
@@ -98,6 +99,7 @@ export default function TimelinePage() {
           <div className="grow" style={{ minWidth: 200 }}><h1 className="page-title">Timeline</h1><div className="cap" style={{ fontSize: 13, marginTop: 2 }}>{rows.length} books · {notes.length} notes</div></div>
           <Seg label="View" value={view} onChange={setView} options={[{ v: 'bars', l: 'Bars' }, { v: 'journal', l: 'Journal' }, { v: 'calendar', l: 'Calendar' }]} />
           {view === 'bars' && <Seg label="Zoom" value={zoom} onChange={setZoom} options={[{ v: 'week', l: 'Week' }, { v: 'month', l: 'Month' }, { v: 'year', l: 'Year' }, { v: 'all', l: 'All' }]} />}
+          <button className={`ib ${side ? 'on' : ''}`} aria-label={side ? 'Hide this month' : 'Show this month'} aria-pressed={side} onClick={toggleSide}><Icon name="sidebar-right" size={16} /></button>
         </div>
         {view !== 'calendar' && (
           <div className="row wrap" style={{ gap: 6 }}>
@@ -116,13 +118,13 @@ export default function TimelinePage() {
                   {i > 0 && <div style={{ position: 'absolute', left: `${X(t.t)}%`, top: 44, bottom: 44, width: 1, background: 'var(--border)' }} />}
                   <div className="row" style={{ position: 'absolute', left: `calc(${X(t.t)}% + ${i ? 10 : 0}px)`, top: 14, fontSize: 13, fontWeight: 600, gap: 8 }}>
                     {t.label}
-                    {zoom === 'month' && t.month && (() => { const g = monthGoal(t.year!, t.month); const c = completedIn(t.year!, t.month); return g ? <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 999, background: c >= g ? 'var(--blush)' : 'var(--surface-alt)', color: c >= g ? 'var(--on-accent)' : 'var(--ink-secondary)' }}>{c} / {g}</span> : null; })()}
+                    {zoom === 'month' && t.month && (() => { const g = monthGoal(t.year!, t.month); const c = completedIn(t.year!, t.month); return g ? <span style={{ fontSize: 12, fontWeight: 500, padding: '2px 8px', borderRadius: 999, background: c >= g ? 'var(--blush)' : 'var(--surface-alt)', color: c >= g ? 'var(--on-accent)' : 'var(--ink-secondary)' }}>{c} / {g}</span> : null; })()}
                   </div>
                 </React.Fragment>
               ))}
               {now >= from && now <= to && <>
                 <div style={{ position: 'absolute', left: `${X(now)}%`, top: 44, bottom: 44, width: 2, background: 'var(--apricot)' }} />
-                <div style={{ position: 'absolute', left: `${X(now)}%`, top: 40, transform: 'translateX(-50%)', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'var(--apricot)', color: 'var(--on-accent)' }}>Today</div>
+                <div style={{ position: 'absolute', left: `${X(now)}%`, top: 40, transform: 'translateX(-50%)', fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'var(--apricot)', color: 'var(--on-accent)' }}>Today</div>
               </>}
               {rows.map(({ b, start, end }, i) => {
                 const left = Math.max(0, X(start)), right = Math.min(100, X(end));
@@ -131,13 +133,13 @@ export default function TimelinePage() {
                 const bookNotes = notes.filter((n) => n.book_id === b.id).map((n) => new Date(n.created_at).getTime()).filter((t) => t >= from && t <= to);
                 return (
                   <React.Fragment key={b.id}>
-                    <button onClick={() => router.push(`/book/${b.id}`)} title={`${b.title}`}
-                      style={{ position: 'absolute', left: `${left}%`, width: `max(${right - left}%, 120px)`, top, height: 34, display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 0 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, textAlign: 'left', cursor: 'pointer', color: st2 === 'nf' ? 'var(--ink-secondary)' : 'var(--ink)',
+                    <Link href={`/book/${b.id}`} title={b.title}
+                      style={{ textDecoration: 'none', position: 'absolute', left: `${left}%`, width: `max(${right - left}%, 120px)`, top, height: 34, display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 0 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, textAlign: 'left', cursor: 'pointer', color: st2 === 'nf' ? 'var(--ink-secondary)' : 'var(--ink)',
                         background: st2 === 'done' || st2 === 'pz' ? 'var(--surface-alt)' : 'var(--surface)', border: st2 === 'nf' ? '1.5px dashed var(--border-control)' : '0', boxShadow: st2 === 'prog' ? 'inset 0 0 0 1.5px var(--ink-secondary)' : undefined, opacity: st2 === 'pz' ? 0.55 : 1 }}>
                       {!b.file_path && <Icon name="book-nofile" size={14} className="mut" />}
                       <span className="truncate grow">{b.title}</span>
-                      {b.status === 'completed' ? <RatingMark rating={b.rating} size={16} /> : b.status === 'paused' ? <span className="cap">paused</span> : <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-secondary)' }}>{pct(b.progress)}</span>}
-                    </button>
+                      {b.status === 'completed' ? <RatingMark rating={b.rating} size={16} /> : b.status === 'paused' ? <span className="cap">paused</span> : <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-secondary)' }}>{pct(b.progress)}</span>}
+                    </Link>
                     {bookNotes.map((t, k) => <span key={k} title="Note" style={{ position: 'absolute', left: `calc(${X(t)}% - 3px)`, top: top + 38, width: 7, height: 7, borderRadius: '50%', background: 'var(--petal)' }} />)}
                   </React.Fragment>
                 );
@@ -162,16 +164,16 @@ export default function TimelinePage() {
                 <section key={k} className="col" style={{ gap: 10 }}>
                   <div className="row" style={{ paddingTop: 10 }}>
                     <div className="grow"><div className="serif" style={{ fontSize: 18 }}>{MONTHS_LONG[m]} {y}</div><div className="cap">{c} completed · {list.filter((e) => e.kind === 'Note').length} notes</div></div>
-                    {g && <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999, background: c >= g.target ? 'var(--blush)' : 'var(--surface-alt)', color: c >= g.target ? 'var(--on-accent)' : 'var(--ink-secondary)' }}>{c >= g.target ? 'Goal met' : `Goal ${c} / ${g.target}`}</span>}
+                    {g && <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 999, background: c >= g.target ? 'var(--blush)' : 'var(--surface-alt)', color: c >= g.target ? 'var(--on-accent)' : 'var(--ink-secondary)' }}>{c >= g.target ? 'Goal met' : `Goal ${c} / ${g.target}`}</span>}
                   </div>
                   {list.map((e, i) => {
                     const d = new Date(e.t);
                     return (
                       <div key={i} className="row" style={{ gap: 14, alignItems: 'stretch' }}>
-                        <div className="col" style={{ width: 34, alignItems: 'center', gap: 0, paddingTop: 10 }}><span className="serif" style={{ fontSize: 18 }}>{d.getDate()}</span><span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-muted)' }}>{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</span></div>
+                        <div className="col" style={{ width: 34, alignItems: 'center', gap: 0, paddingTop: 10 }}><span className="serif" style={{ fontSize: 18 }}>{d.getDate()}</span><span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-muted)' }}>{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</span></div>
                         <Link href={e.href} className="card row grow" style={{ padding: '11px 12px 11px 14px', gap: 10, color: 'inherit', textDecoration: 'none', borderStyle: e.noFile ? 'dashed' : 'solid', borderColor: e.noFile ? 'var(--border-control)' : undefined, opacity: e.kind === 'Paused' ? 0.7 : 1 }}>
                           <div className="col grow" style={{ gap: 2, minWidth: 0 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-secondary)' }}>{e.kind}{e.kind === 'Note' && e.book ? ` · ${e.book.title}` : ''}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-secondary)' }}>{e.kind}{e.kind === 'Note' && e.book ? ` · ${e.book.title}` : ''}</span>
                             <span style={{ fontSize: 15, fontWeight: 500 }} className="truncate">{e.text}</span>
                             {e.meta && <span className="secondary truncate" style={{ fontSize: 12 }}>{e.meta}</span>}
                           </div>
@@ -200,7 +202,7 @@ export default function TimelinePage() {
           </div>
         )}
       </div>
-      <aside className="side-r" aria-label="This month">
+      {side && <aside className="side-r" aria-label="This month">
         {(() => {
           const d = new Date(); const y = d.getFullYear(), m = d.getMonth() + 1;
           const mg = goals.find((g) => g.year === y && g.month === m); const yg = goals.find((g) => g.year === y && g.month == null);
@@ -226,12 +228,12 @@ export default function TimelinePage() {
               <div key={b.id} className="card col" style={{ padding: '10px 12px', gap: 6, borderRadius: 8 }}>
                 <Link href={`/book/${b.id}`} style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>{b.title}</Link>
                 <span className="cap">Stopped at {pct(b.progress)}</span>
-                {b.read_next_pos == null && <button className="btn sec sm" style={{ alignSelf: 'flex-start' }} onClick={() => lib.setReadNext(b.id, true)}><Icon name="bookmark" size={14} />Move to Read Next</button>}
+                {b.read_next_pos == null && <button className="btn sec sm" style={{ alignSelf: 'flex-start' }} onClick={() => lib.setReadNext(b.id, true)}><Icon name="readnext" size={14} />Move to Read Next</button>}
               </div>
             ))}
           </section>
         )}
-      </aside>
+      </aside>}
     </div>
   );
 }

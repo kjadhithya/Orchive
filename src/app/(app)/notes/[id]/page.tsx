@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { Icon } from '@/components/Icon';
-import { Empty, Seg } from '@/components/ui';
+import { Empty, Seg, usePanel } from '@/components/ui';
 import { headings, renderMarkdown, excerpt } from '@/lib/markdown';
 import { download, fmtDate, norm, resolveLink, wikiLinks } from '@/lib/util';
 
@@ -15,6 +15,7 @@ function NoteInner() {
   const { notes, books, updateNote, deleteNote, toast } = useStore();
   const note = notes.find((n) => n.id === id);
   const [mode, setMode] = useState<'edit' | 'read'>(params.get('edit') || !note?.body ? 'edit' : 'read');
+  const [side, toggleSide] = usePanel('note');
   const [body, setBody] = useState(note?.body || '');
   const [title, setTitle] = useState(note?.title || '');
   const [saved, setSaved] = useState(true);
@@ -113,8 +114,8 @@ function NoteInner() {
           <span>/</span><b className="truncate">{title || 'Untitled'}</b><span className="grow" />
           <Seg label="Mode" value={mode} onChange={setMode} options={[{ v: 'edit', l: 'Edit' }, { v: 'read', l: 'Read' }]} />
           <button className="ib" aria-label="Export as Markdown" onClick={() => download(`${title || 'note'}.md`, `# ${title}\n\n${body}`, 'text/markdown')}><Icon name="download" size={16} /></button>
-          <button className="ib" aria-label="Copy link" onClick={() => { navigator.clipboard.writeText(location.href); toast('Link copied'); }}><Icon name="link" size={16} /></button>
-          <button className="ib" aria-label="Delete note" onClick={() => { deleteNote(note.id); router.push(owner ? `/book/${owner.id}` : '/notes'); }}><Icon name="trash" size={16} /></button>
+          <button className="ib" aria-label="Delete note" onClick={() => { if (!confirm(`Delete “${title || 'Untitled'}”?`)) return; deleteNote(note.id); router.push(owner ? `/book/${owner.id}` : '/notes'); }}><Icon name="trash" size={16} /></button>
+          <button className={`ib ${side ? 'on' : ''}`} aria-label={side ? 'Hide outline and links' : 'Show outline and links'} aria-pressed={side} onClick={toggleSide}><Icon name="sidebar-right" size={16} /></button>
         </div>
         <div className="doc" style={{ gap: 6 }}>
           <input className="serif" aria-label="Note title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() && title !== note.title && updateNote(note.id, { title: title.trim() })}
@@ -163,7 +164,7 @@ function NoteInner() {
           )}
         </div>
       </div>
-      <aside className="side-r" aria-label="Note details">
+      {side && <aside className="side-r" aria-label="Note details">
         <section className="col" style={{ gap: 4 }}>
           <div className="gh" style={{ padding: 0 }}><Icon name="outline" size={14} className="mut" />Outline</div>
           {outline.length === 0 && <span className="cap">Add ## headings to build an outline.</span>}
@@ -179,7 +180,7 @@ function NoteInner() {
           <div className="gh" style={{ padding: 0 }}><Icon name="note" size={14} className="mut" />Backlinks<span className="c">{backlinks.length}</span></div>
           {backlinks.map((n) => <Link key={n.id} href={`/notes/${n.id}`} className="card" style={{ padding: '8px 10px', borderRadius: 8, color: 'inherit', textDecoration: 'none' }}><div style={{ fontSize: 12, fontWeight: 500 }}>{n.title}</div><div className="secondary" style={{ fontSize: 12 }}>{excerpt(n.body, 90)}</div></Link>)}
         </section>
-      </aside>
+      </aside>}
     </div>
   );
 }

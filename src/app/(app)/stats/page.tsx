@@ -98,7 +98,7 @@ export default function StatsPage() {
           {bars.map((b, i) => (
             <div key={i} className="col" style={{ flex: 1, alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end', minWidth: 0 }} title={`${b.title}: ${b.v ? duration(b.v) : 'no reading'}`}>
               <div style={{ width: '100%', maxWidth: 30, height: `${(b.v / maxBar) * 140}px`, minHeight: b.v ? 3 : 0, background: i === bars.length - 1 ? 'var(--primary)' : 'var(--rating-3)', borderRadius: '3px 3px 0 0' }} />
-              <span className="cap" style={{ fontSize: 10, visibility: range === 'month' && i % 5 !== 4 && i !== bars.length - 1 ? 'hidden' : 'visible' }}>{b.label}</span>
+              <span className="cap" style={{ fontSize: 12, visibility: range === 'month' && i % 5 !== 4 && i !== bars.length - 1 ? 'hidden' : 'visible' }}>{b.label}</span>
             </div>
           ))}
         </div>

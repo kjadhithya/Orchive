@@ -78,11 +78,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   addImportsToReadNext: false,
   autoUploadDuplicates: 'skip',
   librarySort: 'opened',
-  libraryView: 'list',
+  libraryView: 'covers',
+  v: 2,
 };
 
 export function mergeSettings(raw: Partial<AppSettings> | null | undefined): AppSettings {
-  const r = raw || {};
+  const r = { ...(raw || {}) };
+  // v2: covers became the default library view
+  if ((r.v || 1) < 2) { r.libraryView = 'covers'; r.v = 2; }
   return {
     ...DEFAULT_SETTINGS,
     ...r,
@@ -148,13 +151,19 @@ export function resolveDark(s: AppSettings): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
+let readerTheme: ReadingTheme | null = null;
+/** The reader registers its page theme here so every later appearance refresh keeps the reader's chrome in that theme. */
+export function setReaderTheme(t: ReadingTheme | null) { readerTheme = t; }
+
 /** Writes the appearance settings onto <html> as CSS variables. */
-export function applyAppearance(s: AppSettings, overrideTheme?: ReadingTheme | null) {
+export function applyAppearance(s: AppSettings, explicitTheme?: ReadingTheme | null) {
+  const overrideTheme = explicitTheme === undefined ? readerTheme : explicitTheme;
+  // overrideTheme is passed only by the reader: its toolbars and panels always take the page colours
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   let dark = resolveDark(s);
   const style = root.style;
-  const clear = ['--canvas', '--sidebar', '--surface', '--surface-alt', '--hover', '--border', '--ink', '--ink-secondary', '--ink-muted'];
+  const clear = ['--canvas', '--sidebar', '--surface', '--surface-alt', '--hover', '--border', '--border-control', '--ink', '--ink-secondary', '--ink-muted'];
   clear.forEach((v) => style.removeProperty(v));
 
   const custom = s.customAppThemes.find((t) => t.id === s.appThemeId);
@@ -175,11 +184,12 @@ export function applyAppearance(s: AppSettings, overrideTheme?: ReadingTheme | n
     style.setProperty('--hover', mix(custom.bg, dark ? '#FFFFFF' : '#000000', 0.05));
     style.setProperty('--border', mix(custom.bg, dark ? '#FFFFFF' : '#000000', 0.1));
   }
-  if (overrideTheme && s.matchReadingTheme) {
+  if (overrideTheme) {
     const t = overrideTheme;
     dark = luminance(t.bg) < 0.2;
     style.setProperty('--surface', t.bg);
-    style.setProperty('--canvas', mix(t.bg, dark ? '#000000' : '#000000', 0.04));
+    style.setProperty('--canvas', mix(t.bg, dark ? '#FFFFFF' : '#000000', 0.03));
+    style.setProperty('--border-control', mix(t.ink, t.bg, 0.5));
     style.setProperty('--sidebar', mix(t.bg, dark ? '#FFFFFF' : '#000000', 0.02));
     style.setProperty('--surface-alt', mix(t.bg, dark ? '#FFFFFF' : '#000000', 0.07));
     style.setProperty('--hover', mix(t.bg, dark ? '#FFFFFF' : '#000000', 0.06));

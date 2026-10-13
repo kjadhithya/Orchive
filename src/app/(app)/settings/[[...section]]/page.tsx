@@ -8,12 +8,13 @@ import { Icon } from '@/components/Icon';
 import { Seg, Toggle } from '@/components/ui';
 import { ACCENTS, allReadingThemes, BUILTIN_APP_THEMES, DEFAULT_READING, DEFAULT_SETTINGS, FONTS, fontCss } from '@/lib/settings';
 import { uploadWithProgress } from '@/lib/files';
+import { collectData, exportFull, restoreBackup } from '@/lib/backup';
 import { bytes, download, extOf, fmtDate, MONTHS_LONG, relDate } from '@/lib/util';
 import type { AppTheme, ReadingSettings } from '@/lib/types';
 
 const TITLES: Record<string, string> = {
   account: 'Account', appearance: 'Appearance', reading: 'Reading', library: 'Library and import',
-  sync: 'Sync and storage', goals: 'Goals', privacy: 'Privacy and backup',
+  sync: 'Sync and storage', privacy: 'Privacy and backup',
 };
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
@@ -152,9 +153,8 @@ function Appearance() {
         )}
       </Section>
       <Section title="Interface">
-        <Row label="Match the reading theme" hint="While reading, the app chrome takes on the colours of the page."><Toggle label="Match the reading theme" on={settings.matchReadingTheme} onChange={(v) => saveSettings({ matchReadingTheme: v })} /></Row>
         <Row label="Interface size"><Seg label="Interface size" value={settings.uiScale} onChange={(uiScale) => saveSettings({ uiScale })} options={[{ v: 'small', l: 'Small' }, { v: 'default', l: 'Default' }, { v: 'large', l: 'Large' }]} /></Row>
-        <Row label="Reset appearance" hint="Back to Orchid accent, system mode, default size."><button className="btn sec sm" onClick={() => saveSettings({ mode: DEFAULT_SETTINGS.mode, schedule: DEFAULT_SETTINGS.schedule, accent: DEFAULT_SETTINGS.accent, appThemeId: DEFAULT_SETTINGS.appThemeId, matchReadingTheme: false, uiScale: 'default' })}>Reset</button></Row>
+        <Row label="Reset appearance" hint="Back to Orchid accent, system mode, default size."><button className="btn sec sm" onClick={() => saveSettings({ mode: DEFAULT_SETTINGS.mode, schedule: DEFAULT_SETTINGS.schedule, accent: DEFAULT_SETTINGS.accent, appThemeId: DEFAULT_SETTINGS.appThemeId, uiScale: 'default' })}>Reset</button></Row>
       </Section>
     </>
   );
@@ -192,7 +192,10 @@ function Reading() {
       <Section title="Theme">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))', gap: 10, padding: '12px 0' }}>
           {themes.map((t) => (
-            <button key={t.id} onClick={() => set({ theme: t.id })} aria-pressed={r.theme === t.id} style={{ height: 64, borderRadius: 10, background: t.bg, color: t.ink, border: `2px solid ${r.theme === t.id ? 'var(--primary)' : 'var(--border)'}`, fontFamily: fontCss(settings, r.font), fontSize: 13, cursor: 'pointer' }}>Aa<br /><span style={{ fontSize: 11, opacity: 0.8 }}>{t.name}</span></button>
+            <div key={t.id} className="col" style={{ gap: 4 }}>
+            <button onClick={() => set({ theme: t.id })} aria-pressed={r.theme === t.id} style={{ height: 64, borderRadius: 10, background: t.bg, color: t.ink, border: `2px solid ${r.theme === t.id ? 'var(--primary)' : 'var(--border)'}`, fontFamily: fontCss(settings, r.font), fontSize: 13, cursor: 'pointer' }}>Aa<br /><span style={{ fontSize: 12 }}>{t.name}</span></button>
+              {!t.builtin && <button className="btn ghost sm" style={{ height: 22, fontSize: 12 }} onClick={() => saveSettings({ customReadingThemes: settings.customReadingThemes.filter((x) => x.id !== t.id), reading: r.theme === t.id ? { ...r, theme: 'day' } : r })}><Icon name="trash" size={12} />Delete</button>}
+            </div>
           ))}
         </div>
         <Row label="Night theme on a schedule" hint={r.nightSchedule ? `${r.nightFrom}–${r.nightTo}` : 'Make your own themes from the reader’s settings panel.'}><Toggle label="Night theme on a schedule" on={r.nightSchedule} onChange={(v) => set({ nightSchedule: v })} /></Row>
@@ -313,69 +316,35 @@ function Sync() {
   );
 }
 
-/* ───────── Goals ───────── */
-function GoalsSettings() {
-  const { goals, setGoal } = useStore();
-  const y = new Date().getFullYear();
-  const yg = goals.find((g) => g.year === y && g.month == null)?.target ?? null;
-  const [v, setV] = useState(yg ? String(yg) : '');
-  useEffect(() => setV(yg ? String(yg) : ''), [yg]);
-  return (
-    <>
-      <Section title={`${y}`}>
-        <Row label="Books to finish this year">
-          <label className="input" style={{ width: 100 }}><input type="number" min={1} aria-label="Yearly goal" value={v} onChange={(e) => setV(e.target.value)} onBlur={() => setGoal(y, null, v ? Math.max(1, Math.round(Number(v))) : null)} /></label>
-        </Row>
-        <Row label="Monthly goals" hint={`Set per month, including ${MONTHS_LONG[new Date().getMonth()]}.`}><Link href="/goals" className="btn sec sm">Open goals</Link></Row>
-        <Row label="What counts" hint="A book counts in the month you mark it completed. Rereads count again each time you finish." />
-      </Section>
-    </>
-  );
-}
-
 /* ───────── Privacy & backup ───────── */
-const TABLES = ['orchive_books', 'orchive_tags', 'orchive_book_tags', 'orchive_collections', 'orchive_collection_books', 'orchive_notes', 'orchive_annotations', 'orchive_reading_sessions', 'orchive_goals'] as const;
-const CONFLICT: Record<string, string> = { orchive_book_tags: 'book_id,tag_id', orchive_collection_books: 'collection_id,book_id' };
-
 function Privacy() {
-  const { auth, settings, toast, refresh, collections, updateCollection, books } = useStore();
-  const [busy, setBusy] = useState<string | null>(null);
+  const { auth, settings, toast, refresh, collections, updateCollection, books, displayName } = useStore();
+  const [busy, setBusy] = useState<{ kind: string; label: string; f: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const exportAll = async () => {
+  const stamp = () => new Date().toISOString().slice(0, 10);
+  const exportZip = async () => {
     if (!auth) return;
-    setBusy('export');
-    const out: Record<string, unknown> = { app: 'orchive', version: 1, exported_at: new Date().toISOString(), settings };
-    for (const t of TABLES) {
-      const all: unknown[] = [];
-      for (let from = 0; ; from += 1000) {
-        const { data, error } = await sb().from(t).select('*').range(from, from + 999);
-        if (error) { toast(`Export failed: ${error.message}`); setBusy(null); return; }
-        all.push(...(data || []));
-        if (!data || data.length < 1000) break;
-      }
-      out[t.replace('orchive_', '')] = all;
-    }
-    download(`orchive-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(out, null, 2), 'application/json');
+    setBusy({ kind: 'zip', label: 'Starting', f: 0 });
+    try {
+      const { blob, missing } = await exportFull(settings, { display_name: displayName }, (label, f) => setBusy({ kind: 'zip', label, f }));
+      download(`orchive-export-${stamp()}.zip`, blob, 'application/zip');
+      toast(missing.length ? `Exported. ${missing.length} file${missing.length > 1 ? 's' : ''} couldn’t be downloaded.` : 'Export ready');
+    } catch (e: any) { toast(`Export failed: ${e?.message || e}`); }
+    setBusy(null);
+  };
+  const exportJson = async () => {
+    if (!auth) return;
+    setBusy({ kind: 'json', label: 'Exporting', f: 0.5 });
+    try { download(`orchive-backup-${stamp()}.json`, JSON.stringify(await collectData(settings, { display_name: displayName }), null, 2), 'application/json'); }
+    catch (e: any) { toast(`Export failed: ${e?.message || e}`); }
     setBusy(null);
   };
   const restore = async (file: File) => {
     if (!auth) return;
-    setBusy('restore');
+    if (!confirm('Restore from this backup? Items in it are added or updated. Nothing in your library is deleted.')) return;
+    setBusy({ kind: 'restore', label: 'Reading backup', f: 0 });
     try {
-      const data = JSON.parse(await file.text());
-      if (data.app !== 'orchive') throw new Error('This is not an Orchive backup');
-      const uid = auth.user.id;
-      let n = 0;
-      for (const t of TABLES) {
-        const rows = (data[t.replace('orchive_', '')] || []) as Record<string, unknown>[];
-        for (let i = 0; i < rows.length; i += 500) {
-          const chunk = rows.slice(i, i + 500).map((r) => ({ ...r, user_id: uid }));
-          const { error } = await sb().from(t).upsert(chunk, CONFLICT[t] ? { onConflict: CONFLICT[t] } : undefined);
-          if (error) throw new Error(`${t.replace('orchive_', '')}: ${error.message}`);
-          n += chunk.length;
-        }
-      }
-      if (data.settings) await sb().from('orchive_profiles').update({ settings: data.settings }).eq('id', uid);
+      const n = await restoreBackup(file, auth.user.id, (label, f) => setBusy({ kind: 'restore', label, f }));
       await refresh();
       toast(`Restored ${n} items`);
     } catch (e: any) { toast(`Restore failed: ${e?.message || e}`); }
@@ -390,12 +359,16 @@ function Privacy() {
   const publicOnes = collections.filter((c) => c.is_public);
   return (
     <>
-      <Section title="Backup" desc="Your library, tags, collections, notes, highlights, sessions, goals and settings. Book files are not included — download those from each book.">
-        <Row label="Export everything" hint="A single JSON file you can keep or restore later."><button className="btn sec sm" disabled={!!busy} onClick={exportAll}><Icon name="download" size={14} />{busy === 'export' ? 'Exporting…' : 'Export JSON'}</button></Row>
-        <Row label="Export library list" hint="Titles, authors, status and ratings as a spreadsheet."><button className="btn sec sm" onClick={exportCsv}><Icon name="download" size={14} />Export CSV</button></Row>
-        <Row label="Restore from backup" hint="Adds and updates items from the file. Nothing is deleted.">
-          <input ref={fileRef} type="file" hidden accept="application/json,.json" onChange={(e) => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = ''; }} />
-          <button className="btn sec sm" disabled={!!busy} onClick={() => fileRef.current?.click()}><Icon name="upload" size={14} />{busy === 'restore' ? 'Restoring…' : 'Restore'}</button>
+      <Section title="Export and backup">
+        <Row label="Export all my data" hint="One ZIP with every book file, covers, fonts, notes as Markdown, highlights, a library spreadsheet and a full backup you can restore.">
+          <button className="btn pri sm" disabled={!!busy} onClick={exportZip}><Icon name="download" size={14} style={{ color: 'var(--on-primary)' }} />Export everything</button>
+        </Row>
+        {busy && <div className="col" style={{ gap: 6, padding: '10px 0', borderBottom: '1px solid var(--border)' }} role="status" aria-live="polite"><span className="cap">{busy.label}…</span><div className="track" style={{ height: 4 }}><i style={{ width: `${Math.round(busy.f * 100)}%`, background: 'var(--primary)' }} /></div></div>}
+        <Row label="Data only" hint="Library, notes, highlights, sessions, goals and settings as one JSON file — small and quick, without book files."><button className="btn sec sm" disabled={!!busy} onClick={exportJson}><Icon name="download" size={14} />Export JSON</button></Row>
+        <Row label="Library list" hint="Titles, authors, status and ratings as a spreadsheet."><button className="btn sec sm" onClick={exportCsv}><Icon name="download" size={14} />Export CSV</button></Row>
+        <Row label="Restore" hint="From a full ZIP export or a JSON backup. Adds and updates items; nothing is deleted.">
+          <input ref={fileRef} type="file" hidden accept=".zip,.json,application/zip,application/json" onChange={(e) => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = ''; }} />
+          <button className="btn sec sm" disabled={!!busy} onClick={() => fileRef.current?.click()}><Icon name="upload" size={14} />Restore</button>
         </Row>
         <Row label="Highlights and notes" hint="Export as Markdown, text or PDF."><Link href="/highlights" className="btn sec sm">Open highlights</Link></Row>
       </Section>
@@ -412,7 +385,7 @@ function Privacy() {
 export default function SettingsPage() {
   const params = useParams<{ section?: string[] }>();
   const section = params.section?.[0] || 'account';
-  const body = section === 'appearance' ? <Appearance /> : section === 'reading' ? <Reading /> : section === 'library' ? <LibrarySettings /> : section === 'sync' ? <Sync /> : section === 'goals' ? <GoalsSettings /> : section === 'privacy' ? <Privacy /> : <Account />;
+  const body = section === 'appearance' ? <Appearance /> : section === 'reading' ? <Reading /> : section === 'library' ? <LibrarySettings /> : section === 'sync' ? <Sync /> : section === 'privacy' ? <Privacy /> : <Account />;
   return (
     <div className="page" style={{ maxWidth: 760 }}>
       <h1 className="page-title">{TITLES[section] || 'Settings'}</h1>

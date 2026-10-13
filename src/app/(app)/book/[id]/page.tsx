@@ -1,12 +1,13 @@
 'use client';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useLibrary } from '@/lib/store';
 import { Icon, Mark, RatingMark, ratingColor, ratingWord } from '@/components/Icon';
-import { BookCover, Empty, RatingSlider, TagEditor, Toggle } from '@/components/ui';
+import { BookCover, Empty, FavButton, RatingSlider, TagEditor } from '@/components/ui';
 import { BookMenu, CollectionPicker, downloadBook } from '@/components/BookMenu';
 import { CompleteDialog } from '@/components/CompleteDialog';
+import { HighlightItem } from '@/components/HighlightItem';
 import { openImport } from '@/components/Shell';
 import { GraphView } from '@/components/GraphView';
 import { buildGraph, neighborhood } from '@/lib/graph';
@@ -24,10 +25,14 @@ export default function BookPage() {
   const lib = useLibrary();
   const { books, live, notes, annotations, tags, tagsOf, collections, collectionBooks, updateBook, setBookTags, setReadNext, createNote, updateNote, auth, removeFile } = lib;
   const book = books.find((b) => b.id === id);
-  const [editing, setEditing] = useState(false);
+  const search = useSearchParams();
+  const [editing, setEditing] = useState(search.get('edit') === '1');
   const [completing, setCompleting] = useState(false);
   const [pickColl, setPickColl] = useState(false);
   const [depth, setDepth] = useState(1);
+  const [side, setSide] = useState(false);
+  useEffect(() => { try { setSide(localStorage.getItem('orchive-book-side') === '1'); } catch {} }, []);
+  const toggleSide = () => setSide((v) => { try { localStorage.setItem('orchive-book-side', v ? '0' : '1'); } catch {} return !v; });
   const coverInput = useRef<HTMLInputElement>(null);
 
   const bookNotes = useMemo(() => notes.filter((n) => n.book_id === id).sort((a, b) => b.updated_at.localeCompare(a.updated_at)), [notes, id]);
@@ -87,9 +92,8 @@ export default function BookPage() {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="vh">
           <Link href={`/library?status=${book.status}`} style={{ color: 'var(--ink-muted)' }}>{STATUS_LABEL[book.status]}</Link><span>/</span><b className="truncate">{book.title}</b><span className="grow" />
-          {book.file_path && <button className="ib" aria-label="Download file" onClick={() => downloadBook(book)}><Icon name="download" size={16} /></button>}
-          <button className="ib" aria-label="Copy link" onClick={() => { navigator.clipboard.writeText(location.href); lib.toast('Link copied'); }}><Icon name="link" size={16} /></button>
-          <BookMenu book={book} />
+          <button className={`ib ${side ? 'on' : ''}`} aria-label={side ? 'Hide links and graph' : 'Show links and graph'} aria-pressed={side} onClick={toggleSide}><Icon name="sidebar-right" size={16} /></button>
+          <BookMenu book={book} onPage />
         </div>
         <div className="doc">
           <div className="row" style={{ gap: 24, alignItems: 'flex-end' }}>
@@ -106,7 +110,7 @@ export default function BookPage() {
                 </>
               ) : (
                 <>
-                  <h1 className="serif" style={{ fontSize: 34, lineHeight: '40px' }}>{book.title}</h1>
+                  <h1 className="serif row" style={{ fontSize: 34, lineHeight: '40px', alignItems: 'center', gap: 10 }}>{book.title}<FavButton book={book} size={20} /></h1>
                   <div className="secondary" style={{ fontSize: 15 }}>{book.author || 'Unknown author'}{book.series && <span className="cap" style={{ fontSize: 13 }}> · {book.series}{book.series_index ? ` #${book.series_index}` : ''}</span>}</div>
                 </>
               )}
@@ -146,8 +150,6 @@ export default function BookPage() {
               <Prop icon="tag" label="Tags"><TagEditor value={t} onChange={(v) => setBookTags(book.id, v)} suggestions={tags.map((x) => x.name)} /></Prop>
               <Prop icon="goal" label="Rating"><RatingSlider value={book.rating} onChange={(v) => updateBook(book.id, { rating: v })} /></Prop>
               <Prop icon="folder" label="Collections"><span className="row wrap" style={{ gap: 6 }}>{inCollections.map((c) => <span key={c.id} className="chip">{c.name}</span>)}<button className="chip out" onClick={() => setPickColl(true)}>Choose…</button></span></Prop>
-              <Prop icon="bookmark" label="Read Next"><Toggle on={book.read_next_pos != null} onChange={(v) => setReadNext(book.id, v)} label="Read Next" /></Prop>
-              <Prop icon="heart" label="Favorite"><Toggle on={book.favorite} onChange={(v) => updateBook(book.id, { favorite: v })} label="Favorite" /></Prop>
               <Prop icon="list" label="Series">
                 <input className="chip out" style={{ width: 180 }} placeholder="Series name" defaultValue={book.series || ''} onBlur={(e) => updateBook(book.id, { series: e.target.value.trim() || null })} aria-label="Series" />
                 <input className="chip out" style={{ width: 64 }} type="number" placeholder="#" defaultValue={book.series_index ?? ''} onBlur={(e) => updateBook(book.id, { series_index: e.target.value ? Number(e.target.value) : null })} aria-label="Number in series" />
@@ -172,7 +174,7 @@ export default function BookPage() {
             ) : (
               <button className="btn pri" onClick={() => openImport('files', book.id)}><Icon name="upload" size={15} style={{ color: 'var(--on-primary)' }} />Import file</button>
             )}
-            <button className="btn sec" onClick={() => setReadNext(book.id, book.read_next_pos == null)}><Icon name="bookmark" size={15} />{book.read_next_pos == null ? 'Add to Read Next' : 'In Read Next'}</button>
+            <button className="btn sec" aria-pressed={book.read_next_pos != null} onClick={() => setReadNext(book.id, book.read_next_pos == null)} style={book.read_next_pos != null ? { color: 'var(--primary)' } : undefined}><Icon name="readnext" size={15} style={book.read_next_pos != null ? { color: 'var(--primary)' } : undefined} />{book.read_next_pos == null ? 'Read Next' : 'In Read Next'}</button>
             {book.status !== 'completed' ? <button className="btn sec" onClick={() => setCompleting(true)}><Icon name="check" size={15} />Mark as completed</button>
               : <button className="btn sec" onClick={reread}><Icon name="restore" size={15} />Re-read</button>}
             <button className="btn sec" onClick={async () => { const n = await createNote({ book_id: book.id, title: 'Untitled' }); if (n) router.push(`/notes/${n.id}?edit=1`); }}><Icon name="plus" size={15} />New note</button>
@@ -199,17 +201,9 @@ export default function BookPage() {
                 <button className="btn ghost sm" onClick={() => exportHighlights('md')}><Icon name="download" size={14} />Markdown</button>
                 <button className="btn ghost sm" onClick={() => exportHighlights('txt')}>Text</button>
               </div>
-              {highlights.slice(0, 20).map((h) => (
-                <Link key={h.id} href={`/read/${book.id}?at=${encodeURIComponent(h.location || '')}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                  <blockquote className="read-font" style={{ margin: 0, padding: '10px 14px', borderRadius: 8, background: `var(--hl-${h.color || 'orchid'})`, fontSize: 16, lineHeight: '26px', textDecoration: h.style === 'strike' ? 'line-through' : h.style === 'underline' ? 'underline' : undefined }}>
-                    {h.quote}
-                    {h.note && <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: 13, marginTop: 6 }}>{h.note}</span>}
-                    <span className="cap" style={{ display: 'block', fontFamily: 'var(--font-sans)', marginTop: 4 }}>{h.chapter}{h.page ? ` · p. ${h.page}` : ''}</span>
-                  </blockquote>
-                </Link>
-              ))}
+              {highlights.slice(0, 20).map((h) => <HighlightItem key={h.id} h={h} bookId={book.id} />)}
               {highlights.length > 20 && <Link href="/highlights" className="cap">See all {highlights.length}</Link>}
-              {bookmarks.length > 0 && <div className="row wrap" style={{ gap: 6 }}><span className="cap">Bookmarks:</span>{bookmarks.map((b) => <Link key={b.id} className="chip" href={`/read/${book.id}?at=${encodeURIComponent(b.location || '')}`}><Icon name="bookmark" size={12} />{b.chapter || pct(b.position)}</Link>)}</div>}
+              {bookmarks.length > 0 && <div className="row wrap" style={{ gap: 6 }}><span className="cap">Bookmarks:</span>{bookmarks.map((b) => <span key={b.id} className="chip"><Link href={`/read/${book.id}?at=${encodeURIComponent(b.location || '')}`} className="row" style={{ gap: 4, color: 'inherit' }}><Icon name="bookmark" size={12} />{b.chapter || pct(b.position)}</Link><button className="x" aria-label="Delete bookmark" onClick={() => lib.deleteAnnotation(b.id)}><Icon name="close" size={12} /></button></span>)}</div>}
             </section>
           )}
 
@@ -222,7 +216,7 @@ export default function BookPage() {
         </div>
       </div>
 
-      <aside className="side-r" aria-label="Connections">
+      {side && <aside className="side-r" aria-label="Connections">
         <section className="col" style={{ gap: 6 }}>
           <div className="gh" style={{ padding: 0 }}><Icon name="link" size={14} className="mut" />Linked mentions<span className="c">{mentions.linked.length}</span></div>
           {mentions.linked.length === 0 && <span className="cap">No other notes link here yet. Type [[{book.title}]] in any note.</span>}
@@ -252,7 +246,7 @@ export default function BookPage() {
             </div>
           ))}
         </section>
-      </aside>
+      </aside>}
       {completing && <CompleteDialog book={book} onClose={() => setCompleting(false)} />}
       {pickColl && <CollectionPicker book={book} onClose={() => setPickColl(false)} />}
     </div>
