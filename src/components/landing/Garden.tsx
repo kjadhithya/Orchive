@@ -102,7 +102,8 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       g.addColorStop(0, '#120B16'); g.addColorStop(0.55, '#2A1733'); g.addColorStop(0.8, '#4A2856'); g.addColorStop(1, '#2A1733');
       bctx.fillStyle = g; bctx.fillRect(0, 0, W, H);
       // a soft moon glow behind the banner
-      const mg = bctx.createRadialGradient(W / 2, H * 0.32, 0, W / 2, H * 0.32, Math.max(W, H) * 0.5);
+      const mx = W * 0.8, my = H * 0.08;
+      const mg = bctx.createRadialGradient(mx, my, 0, mx, my, Math.max(W, H) * 0.42);
       mg.addColorStop(0, 'rgba(240,210,246,0.95)'); mg.addColorStop(0.4, 'rgba(184,132,195,0.45)'); mg.addColorStop(1, 'rgba(184,132,195,0)');
       bctx.fillStyle = mg; bctx.fillRect(0, 0, W, H);
       // rolling hills
@@ -276,18 +277,15 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
         const d = Math.hypot(x - pcx, (y - pcy) * 1.6);
         if (d < pr * 1.6) lum += (1 - d / (pr * 1.6)) * 0.35;
         if (hero.w) {
-          // a gentle dip behind the headline (no hard clearing)
-          const ex = (x * cw + cw / 2 - (hero.x + hero.w / 2)) / (hero.w * 0.7), ey = (y * ch + ch / 2 - (hero.y + hero.h / 2)) / (hero.h * 0.9);
+          // clear the sky behind the headline: no dots in the middle, a soft fade at the edges
+          const ex = (x * cw + cw / 2 - (hero.x + hero.w / 2)) / (hero.w * 0.78), ey = (y * ch + ch / 2 - (hero.y + hero.h / 2)) / (hero.h * 0.95);
           const e = ex * ex + ey * ey;
-          if (e < 1) lum *= 0.6 + 0.4 * e;
+          if (e < 0.55) continue;
+          if (e < 1.4) lum *= Math.pow((e - 0.55) / 0.85, 1.5);
         }
-        const rad = Math.min(1, lum * 1.2) * Math.min(cw, ch) * 0.56;
+        const rad = Math.min(1, lum * 1.25) * Math.min(cw, ch) * 0.62;
         if (rad < 0.45) continue;
-        const grey = 0.3 * r + 0.59 * g + 0.11 * b;
-        let cr = (r * 0.75 + grey * 0.25) * 0.82, cg = (g * 0.75 + grey * 0.25) * 0.82, cb = (b * 0.75 + grey * 0.25) * 0.86;
-        const mxc = Math.max(cr, cg, cb), cap = 128; // background never brighter than a muted orchid
-        if (mxc > cap) { const k = cap / mxc; cr *= k; cg *= k; cb *= k; }
-        const col = colorOf(cr, cg, cb, 8);
+        const col = colorOf(r * 1.15, g * 1.1, b * 1.2, 26);
         let arr = dots.get(col); if (!arr) dots.set(col, (arr = []));
         arr.push(x * cw + cw / 2, y * ch + ch / 2, rad);
       }
