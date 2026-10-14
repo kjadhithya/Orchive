@@ -274,16 +274,16 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
         let lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
         const d = Math.hypot(x - pcx, (y - pcy) * 1.6);
         if (d < pr * 1.6) lum += (1 - d / (pr * 1.6)) * 0.35;
+        // behind the headline the grid stays, just faint: smaller, dimmer dots fading back in at the edges
+        let soft = 1;
         if (hero.w) {
-          // clear the sky behind the headline: no dots in the middle, a soft fade at the edges
           const ex = (x * cw + cw / 2 - (hero.x + hero.w / 2)) / (hero.w * 0.78), ey = (y * ch + ch / 2 - (hero.y + hero.h / 2)) / (hero.h * 0.95);
           const e = ex * ex + ey * ey;
-          if (e < 0.55) continue;
-          if (e < 1.4) lum *= Math.pow((e - 0.55) / 0.85, 1.5);
+          if (e < 1.4) soft = Math.min(1, Math.max(0, (e - 0.35) / 1.05));
         }
-        const rad = Math.min(1, lum * 1.25) * Math.min(cw, ch) * 0.62;
-        if (rad < 0.45) continue;
-        const col = colorOf(r * 1.25, g * 1.15, b * 1.3, 24, 4);
+        const rad = Math.max(0.6, Math.min(1, lum * 1.25) * Math.min(cw, ch) * 0.62 * (0.5 + 0.5 * soft));
+        const dim = 0.38 + 0.62 * soft;
+        const col = colorOf(r * 1.25 * dim, g * 1.15 * dim, b * 1.3 * dim, 24 * dim, 4);
         let arr = dots.get(col); if (!arr) dots.set(col, (arr = []));
         arr.push(x * cw + cw / 2, y * ch + ch / 2, rad);
       }
