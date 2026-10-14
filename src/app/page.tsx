@@ -14,22 +14,21 @@ export default function Landing() {
       <Garden bannerRef={banner} />
       <header className="landing-top">
         <Link href="/" className="landing-brand" aria-label="Orchive home"><Mark size={26} color="#E9C6F0" /><span>Orchive</span></Link>
-      </header>
-      <section ref={banner} className="landing-banner" data-banner aria-labelledby="hero-title">
-        <h1 id="hero-title">Your universe of reading</h1>
-        <p>Bring your library and your notes together. Follow the threads between what you read, think, and discover.</p>
-        <div className="landing-actions">
+        <nav className="landing-nav" aria-label="Account">
           {signedIn ? (
             <Link href="/library" className="lbtn pri">Open your library</Link>
           ) : (
             <>
-              <Link href="/signup" className="lbtn pri">Sign up free</Link>
-              <Link href="/login" className="lbtn sec">Sign in</Link>
+              <Link href="/login" className="lbtn ghost">Sign in</Link>
+              <Link href="/signup" className="lbtn pri">Sign up</Link>
             </>
           )}
-        </div>
+        </nav>
+      </header>
+      <section ref={banner} className="landing-banner" aria-labelledby="hero-title">
+        <h1 id="hero-title">Your universe of reading</h1>
+        <p>Bring your library and your notes together. Follow the threads between what you read, think, and discover.</p>
       </section>
-      <p className="landing-hint" aria-hidden="true">Move through the garden · tap to scatter petals</p>
     </main>
   );
 }

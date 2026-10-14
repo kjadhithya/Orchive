@@ -42,6 +42,7 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
 
     let W = 0, H = 0, dpr = 1, cw = 8, ch = 13, cols = 0, rows = 0;
     let stand: Rect = { x: 0, y: 0, w: 0, h: 0 };
+    let hero: Rect = { x: 0, y: 0, w: 0, h: 0 };
     let plants: Plant[] = [];
     let tufts: { x: number; h: number; ph: number; bloom: boolean; c: string }[] = [];
     const petals: Petal[] = [];
@@ -61,6 +62,7 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       bg.width = fg.width = cs.width = cols; bg.height = fg.height = cs.height = rows;
 
       const b = bannerRef.current?.getBoundingClientRect();
+      if (b) hero = { x: b.left, y: b.top, w: b.width, h: b.height };
       const bw = b ? b.width : Math.min(720, W * 0.86);
       const top = b ? b.bottom : H * 0.6;
       const sw = W < 700 ? Math.min(W * 0.8, bw * 0.9) : Math.min(W * 0.94, bw * 1.08);
@@ -273,6 +275,11 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
         let lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
         const d = Math.hypot(x - pcx, (y - pcy) * 1.6);
         if (d < pr * 1.6) lum += (1 - d / (pr * 1.6)) * 0.35;
+        if (hero.w) {
+          const ex = (x * cw + cw / 2 - (hero.x + hero.w / 2)) / (hero.w * 0.62), ey = (y * ch + ch / 2 - (hero.y + hero.h / 2)) / (hero.h * 0.85);
+          const e = ex * ex + ey * ey;
+          if (e < 1) lum *= 0.22 + 0.78 * e;
+        }
         const rad = Math.min(1, lum * 1.25) * Math.min(cw, ch) * 0.62;
         if (rad < 0.45) continue;
         const col = colorOf(r * 1.15, g * 1.1, b * 1.2, 26);
