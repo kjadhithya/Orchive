@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   title: 'Orchive',
   description: 'A quiet reading archive: your books, notes and highlights, in sync across devices.',
   icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/icon-32.png', sizes: '32x32', type: 'image/png' }],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+    icon: [{ url: '/orchive-icon.svg', type: 'image/svg+xml' }, { url: '/orchive-32.png', sizes: '32x32', type: 'image/png' }],
+    apple: [{ url: '/orchive-180.png', sizes: '180x180' }],
   },
   manifest: '/manifest.webmanifest',
   appleWebApp: { title: 'Orchive', capable: true, statusBarStyle: 'default' },
