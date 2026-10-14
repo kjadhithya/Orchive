@@ -101,11 +101,6 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       const g = bctx.createLinearGradient(0, 0, 0, H);
       g.addColorStop(0, '#120B16'); g.addColorStop(0.55, '#2A1733'); g.addColorStop(0.8, '#4A2856'); g.addColorStop(1, '#2A1733');
       bctx.fillStyle = g; bctx.fillRect(0, 0, W, H);
-      // a soft moon glow behind the banner
-      const mx = W * 0.8, my = H * 0.08;
-      const mg = bctx.createRadialGradient(mx, my, 0, mx, my, Math.max(W, H) * 0.42);
-      mg.addColorStop(0, 'rgba(240,210,246,0.95)'); mg.addColorStop(0.4, 'rgba(184,132,195,0.45)'); mg.addColorStop(1, 'rgba(184,132,195,0)');
-      bctx.fillStyle = mg; bctx.fillRect(0, 0, W, H);
       // rolling hills
       const hill = (y0: number, amp: number, freq: number, col: string, off: number) => {
         bctx.beginPath(); bctx.moveTo(0, H);
