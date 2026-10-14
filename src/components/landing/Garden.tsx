@@ -99,17 +99,19 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
     const drawBackground = (t: number) => {
       bctx.setTransform(1 / cw, 0, 0, 1 / ch, 0, 0);
       const g = bctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#3A2148'); g.addColorStop(0.45, '#5A3270'); g.addColorStop(0.8, '#6E3E82'); g.addColorStop(1, '#3A2148');
+      g.addColorStop(0, '#24152E'); g.addColorStop(0.5, '#33203F'); g.addColorStop(0.85, '#3E2750'); g.addColorStop(1, '#2C1A38');
       bctx.fillStyle = g; bctx.fillRect(0, 0, W, H);
-      // rolling hills
-      const hill = (y0: number, amp: number, freq: number, col: string, off: number) => {
-        bctx.beginPath(); bctx.moveTo(0, H);
-        for (let x = 0; x <= W; x += 12) bctx.lineTo(x, y0 + Math.sin(x * freq + off) * amp + Math.sin(x * freq * 2.3 + off * 1.7) * amp * 0.4);
-        bctx.lineTo(W, H); bctx.closePath(); bctx.fillStyle = col; bctx.fill();
-      };
-      hill(H * 0.66, H * 0.04, 0.004, '#5B3266', 1 + t * 0.02);
-      hill(H * 0.76, H * 0.03, 0.006, '#43244D', 3 + t * 0.03);
-      hill(H * 0.88, H * 0.015, 0.01, '#2E1836', 5);
+      // a few large soft patches of tone, mirrored left/right, drifting very slowly
+      const R = Math.max(W, H);
+      for (const [fx, fy, fr, a, sp] of [[0.12, 0.3, 0.42, 0.16, 0.05], [0.3, 0.72, 0.5, 0.12, 0.04], [0.06, 0.85, 0.38, 0.1, 0.06]] as const) {
+        for (const side of [0, 1]) {
+          const cx = (side ? 1 - fx : fx) * W + Math.sin(t * sp + fy * 9) * W * 0.02 * (side ? -1 : 1);
+          const cy = fy * H + Math.cos(t * sp * 0.8 + fx * 7) * H * 0.02;
+          const rg = bctx.createRadialGradient(cx, cy, 0, cx, cy, R * fr);
+          rg.addColorStop(0, `rgba(176,120,196,${a})`); rg.addColorStop(0.5, `rgba(150,96,172,${a * 0.45})`); rg.addColorStop(1, 'rgba(150,96,172,0)');
+          bctx.fillStyle = rg; bctx.fillRect(0, 0, W, H);
+        }
+      }
       // twinkles
       const r = rand(3);
       for (let i = 0; i < 70; i++) {
@@ -230,6 +232,7 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       fctx.clearRect(0, 0, cols, rows);
       fctx.setTransform(1 / cw, 0, 0, 1 / ch, 0, 0);
       drawStand();
+      plants.forEach((p) => drawPlant(p, t));
 
       // ground grass and low flowering tufts
       fctx.fillStyle = '#6F9A72'; fctx.fillRect(0, H - ch * 1.5, W, ch * 1.5);
@@ -244,8 +247,8 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       fctx.globalAlpha = 1;
     };
 
-    const colorOf = (r: number, g: number, b: number, lift: number) => {
-      const q = (v: number) => Math.min(255, Math.round((v + lift) / 12) * 12);
+    const colorOf = (r: number, g: number, b: number, lift: number, step = 12) => {
+      const q = (v: number) => Math.min(255, Math.round((v + lift) / step) * step);
       const key = (q(r) << 16) | (q(g) << 8) | q(b);
       let s = colorCache.get(key);
       if (!s) { s = `rgb(${q(r)},${q(g)},${q(b)})`; colorCache.set(key, s); }
@@ -280,7 +283,7 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
         }
         const rad = Math.min(1, lum * 1.25) * Math.min(cw, ch) * 0.62;
         if (rad < 0.45) continue;
-        const col = colorOf(r * 1.15, g * 1.1, b * 1.2, 26);
+        const col = colorOf(r * 1.25, g * 1.15, b * 1.3, 24, 4);
         let arr = dots.get(col); if (!arr) dots.set(col, (arr = []));
         arr.push(x * cw + cw / 2, y * ch + ch / 2, rad);
       }
