@@ -231,8 +231,10 @@ textarea.text-input { resize: vertical; min-height: 80px; line-height: 1.5; }
 .landing-banner h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(40px, 7vw, 76px); line-height: 1.02; letter-spacing: -0.02em; color: #FFFFFF; margin: 0; text-shadow: 0 2px 24px rgba(14, 9, 17, 0.9), 0 0 2px rgba(14, 9, 17, 0.8); }
 .landing-banner p { margin: clamp(12px, 2vh, 20px) auto 0; max-width: 540px; font-size: clamp(16px, 2vw, 19px); line-height: 1.55; color: #F1E4F4; text-shadow: 0 1px 14px rgba(14, 9, 17, 0.95), 0 0 2px rgba(14, 9, 17, 0.9); }
 @media (max-width: 480px) {
-  .lbtn { height: 36px; padding: 0 14px; font-size: 13px; }
-  .landing-brand span { display: none; }
+  .lbtn { height: 34px; padding: 0 13px; font-size: 13px; }
+  .landing-nav { gap: 6px; }
+  .landing-brand { font-size: 19px; gap: 8px; }
+  .landing-brand svg { width: 22px; height: auto; }
   .landing-banner { top: 84px; }
 }
 @media (max-height: 560px) { .landing-banner { top: 64px; } .landing-banner h1 { font-size: clamp(30px, 5vw, 48px); } }
