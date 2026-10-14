@@ -99,7 +99,7 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
     const drawBackground = (t: number) => {
       bctx.setTransform(1 / cw, 0, 0, 1 / ch, 0, 0);
       const g = bctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, '#120B16'); g.addColorStop(0.55, '#2A1733'); g.addColorStop(0.8, '#4A2856'); g.addColorStop(1, '#2A1733');
+      g.addColorStop(0, '#3A2148'); g.addColorStop(0.45, '#5A3270'); g.addColorStop(0.8, '#6E3E82'); g.addColorStop(1, '#3A2148');
       bctx.fillStyle = g; bctx.fillRect(0, 0, W, H);
       // rolling hills
       const hill = (y0: number, amp: number, freq: number, col: string, off: number) => {
@@ -230,7 +230,7 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       fctx.clearRect(0, 0, cols, rows);
       fctx.setTransform(1 / cw, 0, 0, 1 / ch, 0, 0);
       drawStand();
-      plants.forEach((p) => drawPlant(p, t));
+
       // ground grass and low flowering tufts
       fctx.fillStyle = '#6F9A72'; fctx.fillRect(0, H - ch * 1.5, W, ch * 1.5);
       tufts.forEach((tf) => {
