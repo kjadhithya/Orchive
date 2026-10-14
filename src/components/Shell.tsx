@@ -28,7 +28,7 @@ type TabT = { href: string; title: string; icon: string };
 export function useAuthGate() {
   const { auth, authReady } = useStore();
   const router = useRouter();
-  useEffect(() => { if (authReady && !auth) router.replace('/login'); }, [auth, authReady, router]);
+  useEffect(() => { if (authReady && !auth) router.replace('/'); }, [auth, authReady, router]);
   return authReady && !!auth;
 }
 

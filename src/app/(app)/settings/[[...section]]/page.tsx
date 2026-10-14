@@ -70,7 +70,7 @@ function Account() {
     const { error } = await sb().auth.updateUser({ email }, { emailRedirectTo: `${location.origin}/library` });
     toast(error ? error.message : 'Check both inboxes to confirm the change');
   };
-  const signOut = async (scope: 'local' | 'global') => { await sb().auth.signOut({ scope }); router.replace('/login'); };
+  const signOut = async (scope: 'local' | 'global') => { await sb().auth.signOut({ scope }); router.replace('/'); };
   return (
     <>
       <Section title="Profile">

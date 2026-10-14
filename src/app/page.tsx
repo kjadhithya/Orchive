@@ -1,5 +1,6 @@
 'use client';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { Mark } from '@/components/Icon';
@@ -9,6 +10,9 @@ export default function Landing() {
   const { auth, authReady } = useStore();
   const banner = useRef<HTMLDivElement>(null);
   const signedIn = authReady && !!auth;
+  const router = useRouter();
+  // the landing is the front door for visitors; signed-in readers go straight to their library
+  useEffect(() => { if (signedIn) router.replace('/library'); }, [signedIn, router]);
   return (
     <main className="landing">
       <Garden bannerRef={banner} />
