@@ -6,7 +6,12 @@ import { HoverLabels, Toasts } from '@/components/ui';
 export const metadata: Metadata = {
   title: 'Orchive',
   description: 'A quiet reading archive: your books, notes and highlights, in sync across devices.',
-  icons: { icon: '/logo.svg' },
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/icon-32.png', sizes: '32x32', type: 'image/png' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+  },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { title: 'Orchive', capable: true, statusBarStyle: 'default' },
 };
 
 export const viewport: Viewport = {
