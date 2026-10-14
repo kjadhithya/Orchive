@@ -227,12 +227,12 @@ textarea.text-input { resize: vertical; min-height: 80px; line-height: 1.5; }
 .lbtn.ghost { color: #F6E7FA; background: rgba(14, 9, 17, 0.55); box-shadow: inset 0 0 0 1px rgba(233, 198, 240, 0.45); }
 .lbtn.ghost:hover { background: rgba(233, 198, 240, 0.14); color: #FFFFFF; }
 .lbtn:focus-visible { outline: 3px solid #E9C6F0; outline-offset: 3px; }
-.landing-banner { position: absolute; left: 50%; top: clamp(110px, 21vh, 210px); transform: translateX(-50%); width: min(760px, calc(100vw - 32px)); z-index: 2; text-align: center; pointer-events: none; padding-bottom: clamp(18px, 3vh, 30px); }
+.landing-banner { position: absolute; left: 50%; top: clamp(86px, 13vh, 150px); transform: translateX(-50%); width: min(760px, calc(100vw - 32px)); z-index: 2; text-align: center; pointer-events: none; padding-bottom: clamp(18px, 3vh, 30px); }
 .landing-banner h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(40px, 7vw, 76px); line-height: 1.02; letter-spacing: -0.02em; color: #FFFFFF; margin: 0; text-shadow: 0 2px 24px rgba(14, 9, 17, 0.9), 0 0 2px rgba(14, 9, 17, 0.8); }
 .landing-banner p { margin: clamp(12px, 2vh, 20px) auto 0; max-width: 540px; font-size: clamp(16px, 2vw, 19px); line-height: 1.55; color: #F1E4F4; text-shadow: 0 1px 14px rgba(14, 9, 17, 0.95), 0 0 2px rgba(14, 9, 17, 0.9); }
 @media (max-width: 480px) {
   .lbtn { height: 36px; padding: 0 14px; font-size: 13px; }
   .landing-brand span { display: none; }
-  .landing-banner { top: 96px; }
+  .landing-banner { top: 84px; }
 }
-@media (max-height: 560px) { .landing-banner { top: 72px; } .landing-banner h1 { font-size: clamp(30px, 5vw, 48px); } }
+@media (max-height: 560px) { .landing-banner { top: 64px; } .landing-banner h1 { font-size: clamp(30px, 5vw, 48px); } }

@@ -64,7 +64,7 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       const b = bannerRef.current?.getBoundingClientRect();
       if (b) hero = { x: b.left, y: b.top, w: b.width, h: b.height };
       const bw = b ? b.width : Math.min(720, W * 0.86);
-      const top = b ? b.bottom : H * 0.6;
+      const top = b ? b.bottom + Math.max(28, Math.min(90, H * 0.07)) : H * 0.6; // breathing room between the headline and the bookcase
       const sw = W < 700 ? Math.min(W * 0.8, bw * 0.9) : Math.min(W * 0.94, bw * 1.08);
       stand = { x: W / 2 - sw / 2, y: top - 6, w: sw, h: H - top + 6 };
       buildShelves();
@@ -102,7 +102,8 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
       g.addColorStop(0, '#120B16'); g.addColorStop(0.55, '#2A1733'); g.addColorStop(0.8, '#4A2856'); g.addColorStop(1, '#2A1733');
       bctx.fillStyle = g; bctx.fillRect(0, 0, W, H);
       // a soft moon glow behind the banner
-      const mg = bctx.createRadialGradient(W / 2, H * 0.32, 0, W / 2, H * 0.32, Math.max(W, H) * 0.5);
+      const mx = W * 0.8, my = H * 0.08;
+      const mg = bctx.createRadialGradient(mx, my, 0, mx, my, Math.max(W, H) * 0.42);
       mg.addColorStop(0, 'rgba(240,210,246,0.95)'); mg.addColorStop(0.4, 'rgba(184,132,195,0.45)'); mg.addColorStop(1, 'rgba(184,132,195,0)');
       bctx.fillStyle = mg; bctx.fillRect(0, 0, W, H);
       // rolling hills
@@ -276,9 +277,11 @@ export function Garden({ bannerRef }: { bannerRef: React.RefObject<HTMLElement |
         const d = Math.hypot(x - pcx, (y - pcy) * 1.6);
         if (d < pr * 1.6) lum += (1 - d / (pr * 1.6)) * 0.35;
         if (hero.w) {
-          const ex = (x * cw + cw / 2 - (hero.x + hero.w / 2)) / (hero.w * 0.62), ey = (y * ch + ch / 2 - (hero.y + hero.h / 2)) / (hero.h * 0.85);
+          // clear the sky behind the headline: no dots in the middle, a soft fade at the edges
+          const ex = (x * cw + cw / 2 - (hero.x + hero.w / 2)) / (hero.w * 0.78), ey = (y * ch + ch / 2 - (hero.y + hero.h / 2)) / (hero.h * 0.95);
           const e = ex * ex + ey * ey;
-          if (e < 1) lum *= 0.22 + 0.78 * e;
+          if (e < 0.55) continue;
+          if (e < 1.4) lum *= Math.pow((e - 0.55) / 0.85, 1.5);
         }
         const rad = Math.min(1, lum * 1.25) * Math.min(cw, ch) * 0.62;
         if (rad < 0.45) continue;
